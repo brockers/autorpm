@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# Make sure something is actually specified
+if [[ -z "$1" ]]; then echo "Please specify a command (if not sure do `basename $0` --help)"; fi
+
+# Get Simple username
+IAM=`id -un`
+
+# Safest way to get home directory for user
+PASSWDDIR=`grep ^$IAM: /etc/passwd | awk -F":" '{print $6}'`
+HOMEDIR=${HOME:=$PASSWDDIR}
+[ ! -d $HOMEDIR ] && {
+	echo "ERROR: Home directory for user $IAM not found in /etc/passwd."
+	exit 1
+}
+
+RPMDIR=`rpm --eval "%{_rpmdir}"`
+SRCDIR=`rpm --eval "%{_sourcedir}"`
+SPECDIR=`rpm --eval "%{_specdir}"`
+SRPMDIR=`rpm --eval "%{_srcrpmdir}"`
+BUILDDIR=`rpm --eval "%{_builddir}"`
+RPMMACROS="$HOMEDIR/.rpmmacros"
+
+# Our list of available spec files.
+PACKAGELIST=()
+
+setpacakgelist() {
+	i=0
+	for m in "$SPECDIR"/*.spec; do
+		PACKAGELIST[$i]=$( basename "$m" .spec )
+		i=$((i+1))
+	done
+}
+
+usage () {
+	echo "`basename $0` [OPTIONS] meta script for automated rpm package building/management."
+	echo " "
+	echo "Options:"
+	echo "  help|-h|--help      ...Show this help menu"
+	echo "  list                ...List all current rpm build proejects in our SPEC file directory "
+	echo "  setup               ...Create basic build setup, will read from .rpmmacros (if exists)" 
+	echo "  init <package-name> ...Initialize a new spec file and package build project."
+	echo ""
+	exit 1
+}
+
+createsetup() {
+	echo "Creating basic build enviroment and .rpmmacros (unless they already exist.)"
+	rpmdev-setuptree
+}
+
+createpackage() {
+	echo "Initializing package $1 for rpmbuild."
+	rpmdev-newspec -o "$SPECDIR/$1.spec" $1
+}
+
+
+list() {
+	for num in $(seq 0 $((${#PACKAGELIST[@]} - 1))); do
+		echo "    ${PACKAGELIST[$num]}"
+	done
+}
+
+while [ -n $1 ]; do
+	case $1 in
+		-h|--help|help)
+			usage
+			;;
+		setup)
+			createsetup
+			shift 1
+			;;
+		init)
+			createpackage $2
+			shift 2
+			;;
+		list)
+			setpacakgelist
+			list
+			shift 1
+			;;
+		*)
+			break	
+			;;
+	esac
+done
+
+#
+exit 0
