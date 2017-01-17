@@ -47,11 +47,13 @@ usage () {
 createsetup() {
 	echo "Creating basic build enviroment and .rpmmacros (unless they already exist.)"
 	rpmdev-setuptree
+	exit 1
 }
 
 createpackage() {
 	echo "Initializing package $1 for rpmbuild."
 	rpmdev-newspec -o "$SPECDIR/$1.spec" $1
+	exit 1
 }
 
 
@@ -68,16 +70,13 @@ while [ -n $1 ]; do
 			;;
 		setup)
 			createsetup
-			shift 1
 			;;
 		init)
 			createpackage $2
-			shift 2
 			;;
 		list)
 			setpacakgelist
 			list
-			shift 1
 			;;
 		*)
 			break	
